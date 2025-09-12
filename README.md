@@ -172,4 +172,8 @@ ImporterBIM/
 - [IFCOpenShell](https://ifcopenshell.org/)
 - [Documentação BIM](https://www.buildingsmart.org/)
 
----
+## 🔗 Repositório de Modelos
+
+- [Common 3D Test Models](https://github.com/alecjacobson/common-3d-test-models)
+- [glTF Sample Models](https://github.com/KhronosGroup/glTF-Sample-Models)
+- [IfcSampleFiles](https://github.com/youshengCode/IfcSampleFiles)
