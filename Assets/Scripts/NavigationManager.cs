@@ -33,11 +33,11 @@ public class NavigationManager : MonoBehaviour
     private float orbitPitch;
     private float orbitDistance = 5f;
 
-    private Vector3 defaultCamPos;
-    private Quaternion defaultCamRot;
-    private float defaultFOV;
+    public Vector3 defaultCamPos;
+    public Quaternion defaultCamRot;
+    public float defaultFOV;
 
-    private GameObject currentModel;
+    public GameObject currentModel;
 
     void Awake()
     {
@@ -98,7 +98,7 @@ public class NavigationManager : MonoBehaviour
         Cursor.visible = false;
     }
 
-    void EnterOrbit()
+    public void EnterOrbit()
     {
         mode = NavMode.Orbit;
         Cursor.lockState = CursorLockMode.None;
@@ -127,7 +127,9 @@ public class NavigationManager : MonoBehaviour
         float scroll = Input.GetAxis("Mouse ScrollWheel");
         if (Mathf.Abs(scroll) > 1e-4f)
         {
-            orbitDistance = Mathf.Clamp(orbitDistance * (1f - scroll * zoomSpeed), minDistance, maxDistance);
+            // O zoomSpeed já está calibrado dinamicamente em FocusObject()
+            float factor = 1f - scroll * zoomSpeed;
+            orbitDistance = Mathf.Clamp(orbitDistance * factor, minDistance, maxDistance);
         }
     }
 
@@ -175,12 +177,18 @@ public class NavigationManager : MonoBehaviour
         orbitPivot.position = bounds.center;
 
         float radius = bounds.extents.magnitude * focusPadding;
+        radius = Mathf.Max(radius, 0.1f); // Garante um mínimo
+
         float fovRad = cam.fieldOfView * Mathf.Deg2Rad;
         float dist = Mathf.Max(minDistance, radius / Mathf.Tan(fovRad * 0.5f));
 
         orbitDistance = dist;
 
-        // Reposiciona mantendo orientação atual
+        // Ajusta dinamicamente sensibilidade e passo do scroll conforme tamanho
+        zoomSpeed = Mathf.Clamp(radius * 3f, 0.01f, 2f);    // Zoom mais suave p/ objetos pequenos
+        minDistance = Mathf.Max(0.01f, radius * 0.1f);
+        maxDistance = Mathf.Max(10f, radius * 20f);
+
         cam.transform.position = orbitPivot.position - cam.transform.rotation * Vector3.forward * orbitDistance;
     }
 
@@ -204,9 +212,9 @@ public class NavigationManager : MonoBehaviour
 
     IEnumerator ImportModelRoutine()
     {
-        // Filtros: OBJ e FBX
+        // Agora filtra OBJ e GLTF/GLB
         FileBrowser.SetFilters(true,
-            new FileBrowser.Filter("Models", ".obj", ".fbx")
+            new FileBrowser.Filter("Models", ".obj", ".gltf", ".glb")
         );
         FileBrowser.SetDefaultFilter(".obj");
 
@@ -217,34 +225,44 @@ public class NavigationManager : MonoBehaviour
 
         string path = FileBrowser.Result[0];
 
-        // Descarte modelo anterior
+        // Destrói o modelo anterior, se houver
         if (currentModel != null) Destroy(currentModel);
 
         string ext = System.IO.Path.GetExtension(path).ToLowerInvariant();
 
         if (ext == ".obj")
         {
-            // Dummiesman OBJ
+            // OBJ Loader comum
             currentModel = new OBJLoader().Load(path);
+            // Ajusta transformações se necessário
+            currentModel.transform.position = Vector3.zero;
+            // Foca e salva defaults
+            FocusObject(currentModel);
+            defaultCamPos = cam.transform.position;
+            defaultCamRot = cam.transform.rotation;
+            defaultFOV = cam.fieldOfView;
+            EnterOrbit();
+        }
+        else if (ext == ".gltf" || ext == ".glb")
+        {
+            // Chama seu loader de GLTF/GLB (adaptando caso seu loader esteja em outro objeto)
+            // Supondo que tenha uma referência/instância para seu loader:
+            var gltfLoader = Object.FindFirstObjectByType<GltfLoaderButton>();
+            if (gltfLoader != null)
+            {
+                // Prefixa corretamente para local: "file:///"
+                gltfLoader.LoadModel("file:///" + path.Replace("\\", "/"));
+            }
+            else
+            {
+                Debug.LogError("Nenhuma instância de GltfLoaderButton encontrada na cena!");
+            }
+            // Para glTFast, normalmente você controla ajuste/escala cá dentro do script do loader se desejar.
         }
         else
         {
             Debug.LogWarning("Extensão não suportada.");
             yield break;
         }
-
-        // Ajusta escala/rotação se necessário
-        currentModel.transform.position = Vector3.zero;
-
-        // Posição inicial automática
-        FocusObject(currentModel);
-
-        // Atualiza defaults para reset
-        defaultCamPos = cam.transform.position;
-        defaultCamRot = cam.transform.rotation;
-        defaultFOV = cam.fieldOfView;
-
-        // Entra em modo Orbital após import
-        EnterOrbit();
     }
 }
