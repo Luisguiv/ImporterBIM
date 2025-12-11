@@ -148,10 +148,10 @@ ImporterBIM/
 - [x] Documentação básica
 
 ### Versão 2.0
-- [ ] Integração completa com glTFast
-- [ ] Carregamento assíncrono
-- [ ] Suporte a .glb/.gltf
-- [ ] Melhorias de performance
+- [x] Integração completa com glTFast
+- [x] Carregamento assíncrono
+- [x] Suporte a .glb/.gltf
+- [x] Melhorias de inteface
 
 ### Versão 3.0
 - [ ] Integração com IFCOpenShell
